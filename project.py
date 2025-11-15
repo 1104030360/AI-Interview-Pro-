@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import time
 from collections import Counter
 import sys
+import ffmpeg
 
 # 載入Keras訓練好的模型和分類標籤
 model = load_model("/Users/linjunting/Downloads/converted_keras-2/keras_model.h5", compile=False)
@@ -45,6 +46,8 @@ emotion_categories = {
     'neutral': ['neutral', 'disgust', 'fear']
 }
 
+
+
 # 定義在圖像上繪製文本的函數
 def putText(img, text, x, y, size=32, color=(0, 0, 0)):
     font_path = "/Users/linjunting/Downloads/Noto_Sans_TC/NotoSansTC-VariableFont_wght.ttf"
@@ -67,6 +70,14 @@ def process_frame(frame, class_names, model):
     return class_name, confidence_score
 
 
+
+def convert_avi_to_mp4(input_file, output_file):
+    try:
+        ffmpeg.input(input_file).output(output_file).run(overwrite_output=True)
+    except ffmpeg.Error as e:
+        print(f"Error: {e.stderr.decode()}")
+
+
 # 分析情緒、年齡和性別的函數
 def analyze_frame_A(frame, class_name, confidence_score, emotions_over_time, ages_over_time, genders_over_time, check_time):
     try:
@@ -86,6 +97,7 @@ def analyze_frame_A(frame, class_name, confidence_score, emotions_over_time, age
     except Exception as e:
         print(f"Error in emotion detection: {e}")
         return None
+    
 
 # 分析情緒的函數
 def analyze_frame_B(frame, class_name, confidence_score, emotions_over_time, check_time):
@@ -100,6 +112,7 @@ def analyze_frame_B(frame, class_name, confidence_score, emotions_over_time, che
     except Exception as e:
         print(f"Error in emotion detection: {e}")
         return None
+
 
 # 啟動攝像頭
 cap = cv2.VideoCapture(0)
@@ -126,9 +139,9 @@ width1 = int(cap1.get(cv2.CAP_PROP_FRAME_WIDTH))
 height1 = int(cap1.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # 設定影片編碼和創建VideoWriter物件
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out0 = cv2.VideoWriter('output_cam0.mp4', fourcc, target_fps, (width0, height0))
-out1 = cv2.VideoWriter('output_cam1.mp4', fourcc, target_fps, (width1, height1))
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+out0 = cv2.VideoWriter('output_cam0.avi', fourcc, target_fps, (width0, height0))
+out1 = cv2.VideoWriter('output_cam1.avi', fourcc, target_fps, (width1, height1))
 
 
 if not cap.isOpened() or not cap1.isOpened():
@@ -145,6 +158,9 @@ previous_results = {
     'class_name1': '', 'confidence_score1': 0, 'emotion1': '',
     'age1': 0, 'gender1': '', 'gender_confidence1': 0
 }
+
+exit_status = 0
+
 
 # 主循環，不斷讀取攝像頭畫面
 while True:
@@ -249,6 +265,10 @@ cap1.release()
 out0.release()
 out1.release()
 cv2.destroyAllWindows()
+
+
+convert_avi_to_mp4('output_cam0.avi', 'output_cam0.mp4')
+convert_avi_to_mp4('output_cam1.avi', 'output_cam1.mp4')
 
 # 各情緒權重
 basicpoint = 60
@@ -429,3 +449,4 @@ if exit_status == 1:
     sys.exit('q')
 else:
     sys.exit(0)
+    
