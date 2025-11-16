@@ -1,5 +1,5 @@
 # 前提
-注意！安裝所有東西之前都要使用專案的虛擬環境
+注意！安裝所有東西之前都要先啟用專案的 Conda 環境：`conda activate new_tf_env`
 請先幫我更新最新專案結構到 `/Users/linjunting/Desktop/專題python/CLAUDE.md`
 再幫我更新最新的後端架構到 `/Users/linjunting/Desktop/專題python/docs/architecture/backend-arch.md`
 再幫我更新最新的前端架構到 `/Users/linjunting/Desktop/專題python/docs/architecture/frontend-arch.md`
