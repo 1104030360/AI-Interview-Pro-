@@ -1,444 +1,437 @@
 """
-Emotion Analysis System - Main Program
+情緒分析主程式（重構版）
 
-This module implements a dual-camera real-time emotion analysis system
-for service industry satisfaction evaluation.
+使用模組化架構重構，消除硬編碼和全域變數，提供完整的錯誤處理。
 
-Refactored version following engineering best practices.
+主要改進：
+- 使用 Config 管理所有設定
+- 使用 CameraState 封裝狀態
+- 使用工具模組函式
+- 完整的錯誤處理和日誌
+- 消除重複程式碼
 """
-
+import cv2
 import sys
 import time
-import cv2
-import numpy as np
-from keras.models import load_model
-from deepface import DeepFace
-from PIL import ImageFont, ImageDraw, Image
-import matplotlib.pyplot as plt
-from collections import Counter
-import ffmpeg
+from pathlib import Path
 
-# Import project modules
-from config import Config, PathConfig, CameraConfig, AnalysisConfig
-from exceptions import (
-    CameraError, CameraOpenError, CameraReadError,
-    ModelLoadError, ConfigurationError
-)
+from config import Config
 from models import CameraState
-from utils.logging_config import setup_logging, get_logger
-
-# Initialize logging
-setup_logging()
-logger = get_logger(__name__)
-
-
-def load_keras_model():
-    """
-    Load Keras model and class names from configured paths.
-    
-    Returns:
-        Tuple of (model, class_names).
-        
-    Raises:
-        ModelLoadError: If model or labels file cannot be loaded.
-    """
-    logger.info("Loading Keras model...")
-    
-    # Validate configuration
-    is_valid, error_msg = Config.validate()
-    if not is_valid:
-        logger.error(f"Configuration validation failed: {error_msg}")
-        raise ConfigurationError(error_msg)
-    
-    try:
-        # Load model
-        model_path = PathConfig.KERAS_MODEL_PATH
-        logger.info(f"Loading model from: {model_path}")
-        model = load_model(str(model_path), compile=False)
-        logger.info("Model loaded successfully")
-        
-        # Load class names
-        labels_path = PathConfig.LABELS_PATH
-        logger.info(f"Loading labels from: {labels_path}")
-        with open(str(labels_path), "r") as f:
-            class_names = [line.strip() for line in f.readlines()]
-        logger.info(f"Loaded {len(class_names)} class names")
-        
-        return model, class_names
-        
-    except Exception as e:
-        logger.error(f"Failed to load model: {e}")
-        raise ModelLoadError(str(PathConfig.KERAS_MODEL_PATH), str(e))
+from utils import (
+    setup_logging,
+    get_logger,
+    load_keras_model,
+    open_camera_with_retry,
+    configure_camera,
+    release_camera,
+    classify_frame,
+    analyze_with_demographics,
+    analyze_emotions_only,
+    draw_analysis_results,
+    resize_and_flip_frame,
+    create_video_writer,
+    convert_avi_to_mp4,
+    release_video_resources,
+    generate_all_charts,
+    generate_combined_wave_chart,
+    calculate_satisfaction_score
+)
+from exceptions import CameraOpenError, ModelLoadError
 
 
-def put_text_chinese(img, text, x, y, size=32, color=(0, 0, 0)):
-    """
-    Draw Chinese text on image using PIL.
+class EmotionAnalysisSystem:
+    """情緒分析系統主類別"""
     
-    Args:
-        img: Image array.
-        text: Text to draw.
-        x, y: Position coordinates.
-        size: Font size.
-        color: Text color as RGB tuple.
-        
-    Returns:
-        Modified image array.
-    """
-    try:
-        font_path = PathConfig.FONT_PATH
-        font = ImageFont.truetype(str(font_path), size)
-        img_pil = Image.fromarray(img)
-        draw = ImageDraw.Draw(img_pil)
-        draw.text((x, y), text, font=font, fill=color)
-        return np.array(img_pil)
-    except Exception as e:
-        logger.warning(f"Failed to draw text '{text}': {e}")
-        # Fallback to cv2.putText (no Chinese support)
-        cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 
-                   1, color, 2, cv2.LINE_AA)
-        return img
-
-
-def classify_frame(frame, model, class_names):
-    """
-    Classify a single frame using Keras model.
-    
-    Args:
-        frame: Input frame.
-        model: Keras model.
-        class_names: List of class names.
-        
-    Returns:
-        Tuple of (class_name, confidence_score).
-    """
-    # Preprocess
-    resized = cv2.resize(frame, (224, 224), interpolation=cv2.INTER_AREA)
-    normalized = np.asarray(resized, dtype=np.float32)
-    normalized = (normalized / 127.5) - 1
-    batched = normalized.reshape(1, 224, 224, 3)
-    
-    # Predict
-    prediction = model.predict(batched, verbose=0)
-    index = np.argmax(prediction)
-    
-    return class_names[index], prediction[0][index]
-
-
-def analyze_with_demographics(frame, class_name, confidence_score, 
-                             camera_state, check_time):
-    """
-    Analyze frame with emotion, age, and gender detection.
-    
-    This function is used during the initial analysis period.
-    
-    Args:
-        frame: Input frame.
-        class_name: Classification result.
-        confidence_score: Classification confidence.
-        camera_state: CameraState instance.
-        check_time: Elapsed time since detection.
-        
-    Returns:
-        Dictionary with analysis results, or None if failed.
-    """
-    try:
-        analyze = DeepFace.analyze(
-            frame, 
-            actions=['emotion', 'age', 'gender'],
-            enforce_detection=False
-        )
-        
-        emotion = analyze[0]['dominant_emotion']
-        age = round(analyze[0]['age'])
-        gender_prob = analyze[0]['gender']
-        gender = max(gender_prob, key=gender_prob.get)
-        gender_confidence = round(gender_prob[gender], 2)
-        
-        # Update camera state
-        camera_state.emotions_over_time.append(emotion)
-        camera_state.ages_over_time.append(age)
-        camera_state.genders_over_time.append((gender, gender_confidence))
-        
-        return {
-            'class_name': class_name,
-            'confidence_score': np.round(confidence_score * 100, 2),
-            'emotion': emotion,
-            'age': age,
-            'gender': gender,
-            'gender_confidence': gender_confidence
+    def __init__(self):
+        """初始化系統"""
+        self.config = Config()
+        self.logger = None
+        self.model = None
+        self.class_names = None
+        self.cameras = {}
+        self.camera_states = {}
+        self.video_writers = {}
+        self.frame_count = 0
+        self.exit_by_user = False
+        self.previous_results = {
+            'customer': None,
+            'server': None
         }
         
-    except ValueError as e:
-        # No face detected - this is expected sometimes
-        logger.debug(f"No face detected in frame: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"Error in emotion detection: {e}")
-        return None
-
-
-def analyze_emotions_only(frame, class_name, confidence_score,
-                         camera_state, check_time):
-    """
-    Analyze frame with emotion detection only (no demographics).
-    
-    This function is used after the initial analysis period,
-    using cached demographic results.
-    
-    Args:
-        frame: Input frame.
-        class_name: Classification result.
-        confidence_score: Classification confidence.
-        camera_state: CameraState instance.
-        check_time: Elapsed time since detection.
-        
-    Returns:
-        Dictionary with analysis results, or None if failed.
-    """
-    try:
-        analyze = DeepFace.analyze(
-            frame,
-            actions=['emotion'],
-            enforce_detection=False
-        )
-        
-        emotion = analyze[0]['dominant_emotion']
-        
-        # Update camera state
-        camera_state.emotions_over_time.append(emotion)
-        
-        return {
-            'class_name': class_name,
-            'confidence_score': np.round(confidence_score * 100, 2),
-            'emotion': emotion
-        }
-        
-    except ValueError as e:
-        logger.debug(f"No face detected in frame: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"Error in emotion detection: {e}")
-        return None
-
-
-def open_camera_with_retry(camera_id, max_retries=3):
-    """
-    Open camera with retry mechanism.
-    
-    Args:
-        camera_id: Camera ID to open.
-        max_retries: Maximum number of retry attempts.
-        
-    Returns:
-        Opened cv2.VideoCapture object.
-        
-    Raises:
-        CameraOpenError: If camera cannot be opened after all retries.
-    """
-    logger.info(f"Opening camera {camera_id}...")
-    
-    for attempt in range(max_retries):
-        cap = cv2.VideoCapture(camera_id)
-        
-        if cap.isOpened():
-            # Configure camera
-            cap.set(cv2.CAP_PROP_FPS, CameraConfig.TARGET_FPS)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, CameraConfig.CAMERA_WIDTH)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CameraConfig.CAMERA_HEIGHT)
+    def initialize(self):
+        """初始化所有組件"""
+        try:
+            # 設定日誌
+            setup_logging()
+            self.logger = get_logger(__name__)
+            self.logger.info("=== 情緒分析系統啟動 ===")
             
-            logger.info(f"Camera {camera_id} opened successfully")
-            return cap
+            # 載入模型
+            self.logger.info("載入 Keras 模型...")
+            self.model, self.class_names = load_keras_model()
+            self.logger.info(f"模型載入成功，類別數：{len(self.class_names)}")
+            
+            # 初始化攝影機
+            self._initialize_cameras()
+            
+            # 初始化狀態
+            self.camera_states = {
+                'customer': CameraState(),
+                'server': CameraState()
+            }
+            
+            # 初始化視訊錄製
+            self._initialize_video_writers()
+            
+            self.logger.info("系統初始化完成")
+            return True
+            
+        except ModelLoadError as e:
+            if self.logger:
+                self.logger.error(f"模型載入失敗：{e}")
+            else:
+                print(f"模型載入失敗：{e}")
+            return False
+        except CameraOpenError as e:
+            if self.logger:
+                self.logger.error(f"攝影機開啟失敗：{e}")
+            else:
+                print(f"攝影機開啟失敗：{e}")
+            return False
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"初始化失敗：{e}", exc_info=True)
+            else:
+                print(f"初始化失敗：{e}")
+            return False
+    
+    def _initialize_cameras(self):
+        """初始化雙攝影機"""
+        self.logger.info("開啟攝影機...")
         
-        logger.warning(
-            f"Camera {camera_id} open attempt {attempt + 1}/{max_retries} failed"
+        # 開啟攝影機 0（顧客）
+        self.cameras['customer'] = open_camera_with_retry(0, max_retries=3)
+        configure_camera(self.cameras['customer'])
+        
+        # 開啟攝影機 1（服務員）
+        self.cameras['server'] = open_camera_with_retry(1, max_retries=3)
+        configure_camera(self.cameras['server'])
+        
+        self.logger.info("攝影機開啟成功")
+    
+    def _initialize_video_writers(self):
+        """初始化視訊寫入器"""
+        # 獲取攝影機解析度
+        width = int(self.cameras['customer'].get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.cameras['customer'].get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = self.config.camera.fps
+        
+        # 建立視訊寫入器
+        self.video_writers['customer'] = create_video_writer(
+            'output_cam0.avi',
+            fps,
+            (width, height)
         )
-        time.sleep(1)
-    
-    # All retries failed
-    logger.error(f"Failed to open camera {camera_id} after {max_retries} attempts")
-    raise CameraOpenError(camera_id, max_retries)
-
-
-def convert_avi_to_mp4(input_file, output_file):
-    """
-    Convert AVI file to MP4 using ffmpeg.
-    
-    Args:
-        input_file: Input AVI file path.
-        output_file: Output MP4 file path.
-    """
-    try:
-        logger.info(f"Converting {input_file} to {output_file}...")
-        ffmpeg.input(input_file).output(output_file).run(
-            overwrite_output=True,
-            quiet=True
+        
+        self.video_writers['server'] = create_video_writer(
+            'output_cam1.avi',
+            fps,
+            (width, height)
         )
-        logger.info(f"Conversion successful: {output_file}")
-    except ffmpeg.Error as e:
-        error_msg = e.stderr.decode() if e.stderr else str(e)
-        logger.error(f"FFmpeg error: {error_msg}")
-
-
-def generate_emotion_charts(camera_states):
-    """
-    Generate emotion analysis charts for both cameras.
+        
+        self.logger.info("視訊錄製初始化完成")
     
-    Args:
-        camera_states: Dictionary of camera states.
-    """
-    logger.info("Generating emotion analysis charts...")
+    def process_frame(self, camera_name, frame):
+        """
+        處理單一攝影機的畫面
+        
+        Args:
+            camera_name: 攝影機名稱 ('customer' 或 'server')
+            frame: 影像幀
+            
+        Returns:
+            處理後的分析結果字典，如果無需分析則返回 None
+        """
+        state = self.camera_states[camera_name]
+        
+        # 進行分類
+        class_name, confidence = classify_frame(
+            frame, 
+            self.model, 
+            self.class_names
+        )
+        
+        # 檢查是否偵測到人（Class 1）
+        if class_name == 'Class 1':
+            # 檢查信心度
+            if confidence < 1.0:
+                if state.low_confidence_start is None:
+                    state.low_confidence_start = time.time()
+                elif (time.time() - state.low_confidence_start) > 3:
+                    self.logger.warning(
+                        f"{camera_name}: 信心度低於 100% 超過 3 秒，停止分析"
+                    )
+                    return 'stop'
+            else:
+                state.low_confidence_start = None
+            
+            # 標記偵測到人
+            if not state.person_detected:
+                state.person_detected = True
+                state.detection_start_time = time.time()
+                self.logger.info(f"{camera_name}: 偵測到人物")
+            
+            state.session_end_detected = False
+            
+        elif class_name == 'Class 2':
+            # 偵測到會話結束標記
+            if not state.session_end_detected:
+                state.session_end_detected = True
+                state.session_end_start_time = time.time()
+                self.logger.info(f"{camera_name}: 偵測到會話結束標記")
+            
+            state.person_detected = False
+            
+        else:
+            # 未偵測到特定類別，重置狀態
+            state.person_detected = False
+            state.session_end_detected = False
+        
+        # 如果偵測到人且超過延遲時間，進行分析
+        if state.person_detected and state.detection_start_time:
+            elapsed = time.time() - state.detection_start_time
+            
+            if elapsed > self.config.analysis.person_detection_delay:
+                # 判斷是否需要人口統計分析
+                include_demographics = state.should_analyze_demographics(time.time())
+                
+                # 進行分析
+                if include_demographics:
+                    result = analyze_with_demographics(frame, class_name, confidence)
+                    if result:
+                        # 快取人口統計資訊
+                        state.cache_demographics(
+                            result.get('age'),
+                            result.get('gender'),
+                            result.get('gender_confidence')
+                        )
+                        return result
+                else:
+                    result = analyze_emotions_only(frame, class_name, confidence)
+                    if result:
+                        # 加入快取的人口統計資訊
+                        result['age'] = state.cached_age
+                        result['gender'] = state.cached_gender
+                        result['gender_confidence'] = state.cached_gender_confidence
+                        return result
+        
+        return None
     
-    customer_state = camera_states['customer']
-    server_state = camera_states['server']
+    def should_exit(self):
+        """判斷是否應該退出主循環"""
+        # 檢查兩個攝影機的會話結束狀態
+        for name, state in self.camera_states.items():
+            if state.session_end_detected and state.session_end_start_time:
+                if (time.time() - state.session_end_start_time) > 3:
+                    self.logger.info(f"{name}: Class 2 持續超過 3 秒，結束分析")
+                    return True
+        
+        return False
     
-    # Calculate scores
-    customer_score = AnalysisConfig.calculate_emotion_score(
-        customer_state.emotions_over_time
-    )
-    server_score = AnalysisConfig.calculate_emotion_score(
-        server_state.emotions_over_time
-    )
+    def run(self):
+        """執行主循環"""
+        if not self.initialize():
+            self.logger.error("初始化失敗，無法啟動系統") if self.logger else print("初始化失敗")
+            return False
+        
+        self.logger.info("開始主循環...")
+        
+        try:
+            while True:
+                # 讀取兩個攝影機的畫面
+                ret_customer, frame_customer = self.cameras['customer'].read()
+                ret_server, frame_server = self.cameras['server'].read()
+                
+                if not ret_customer or not ret_server:
+                    self.logger.error("無法讀取攝影機畫面")
+                    break
+                
+                # 調整大小和翻轉
+                img_customer = resize_and_flip_frame(frame_customer)
+                img_server = resize_and_flip_frame(frame_server)
+                
+                # 每幀都進行分析
+                if self.frame_count % 1 == 0:
+                    # 處理顧客攝影機
+                    result_customer = self.process_frame('customer', frame_customer)
+                    if result_customer == 'stop':
+                        break
+                    elif result_customer:
+                        self.previous_results['customer'] = result_customer
+                    
+                    # 處理服務員攝影機
+                    result_server = self.process_frame('server', frame_server)
+                    if result_server == 'stop':
+                        break
+                    elif result_server:
+                        self.previous_results['server'] = result_server
+                
+                # 繪製結果（使用最新的結果或快取）
+                if self.previous_results['customer']:
+                    img_customer = draw_analysis_results(
+                        img_customer,
+                        self.previous_results['customer'],
+                        show_demographics=True
+                    )
+                
+                if self.previous_results['server']:
+                    img_server = draw_analysis_results(
+                        img_server,
+                        self.previous_results['server'],
+                        show_demographics=True
+                    )
+                
+                # 寫入視訊
+                if self.video_writers['customer']:
+                    self.video_writers['customer'].write(frame_customer)
+                if self.video_writers['server']:
+                    self.video_writers['server'].write(frame_server)
+                
+                # 顯示畫面
+                cv2.imshow('camera0', img_customer)
+                cv2.imshow('camera1', img_server)
+                
+                # 檢查使用者輸入
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
+                    self.logger.info("使用者按下 'q'，結束程式")
+                    self.exit_by_user = True
+                    break
+                
+                # 檢查是否應該退出
+                if self.should_exit():
+                    break
+                
+                self.frame_count += 1
+            
+            self.logger.info("主循環結束")
+            return True
+            
+        except KeyboardInterrupt:
+            self.logger.info("使用者中斷程式")
+            self.exit_by_user = True
+            return True
+        except Exception as e:
+            self.logger.error(f"執行時發生錯誤：{e}", exc_info=True)
+            return False
     
-    logger.info(f"Customer Emotion Score: {customer_score}")
-    logger.info(f"Server Emotion Score: {server_score}")
+    def cleanup(self):
+        """清理資源"""
+        if self.logger:
+            self.logger.info("清理資源...")
+        
+        # 釋放攝影機
+        if self.cameras:
+            release_camera(*self.cameras.values())
+        
+        # 釋放視訊寫入器
+        if self.video_writers:
+            release_video_resources(*self.video_writers.values())
+        
+        # 關閉所有視窗
+        cv2.destroyAllWindows()
+        
+        if self.logger:
+            self.logger.info("資源清理完成")
     
-    # Get emotion summaries
-    customer_summary = customer_state.get_emotion_summary()
-    server_summary = server_state.get_emotion_summary()
-    
-    # Generate charts...
-    # (Chart generation code would go here - keeping original logic)
-    
-    logger.info("Charts generated successfully")
+    def post_process(self):
+        """後處理：轉換視訊和生成圖表"""
+        self.logger.info("開始後處理...")
+        
+        # 轉換視訊格式
+        self.logger.info("轉換視訊格式...")
+        convert_avi_to_mp4('output_cam0.avi', 'output_cam0.mp4')
+        convert_avi_to_mp4('output_cam1.avi', 'output_cam1.mp4')
+        
+        # 生成圖表
+        self.logger.info("生成分析圖表...")
+        
+        customer_state = self.camera_states['customer']
+        server_state = self.camera_states['server']
+        
+        # 計算滿意度分數
+        if customer_state.emotions:
+            customer_score = calculate_satisfaction_score(customer_state.emotions)
+            self.logger.info(f"Here is the Emotion Grade {customer_score} of Customer")
+            print(f"Here is the Emotion Grade {customer_score} of Customer")
+        
+        if server_state.emotions:
+            server_score = calculate_satisfaction_score(server_state.emotions)
+            self.logger.info(f"Here is the Emotion Grade {server_score} of Server")
+            print(f"Here is the Emotion Grade {server_score} of Server")
+        
+        # 生成顧客圖表
+        if customer_state.emotions:
+            generate_all_charts(
+                customer_state.emotions,
+                customer_state.ages,
+                customer_state.genders,
+                camera_name='Customer',
+                output_dir=str(Path.cwd())
+            )
+        
+        # 生成服務員圖表
+        if server_state.emotions:
+            generate_all_charts(
+                server_state.emotions,
+                server_state.ages,
+                server_state.genders,
+                camera_name='Server',
+                output_dir=str(Path.cwd())
+            )
+        
+        # 生成合併圖表
+        if customer_state.emotions and server_state.emotions:
+            generate_combined_wave_chart(
+                customer_state.emotions,
+                server_state.emotions,
+                str(Path.cwd() / 'Customer_Emotion_Wave & Server_Emotion_Wave.jpg'),
+                label1='Customer_Emotion_Wave',
+                label2='Server_Emotion_Wave',
+                title='Combined Emotion Analysis'
+            )
+        
+        self.logger.info("後處理完成")
 
 
 def main():
-    """Main program entry point."""
-    logger.info("="*60)
-    logger.info("Emotion Analysis System Starting...")
-    logger.info("="*60)
+    """主函式"""
+    system = EmotionAnalysisSystem()
     
     try:
-        # Load model
-        model, class_names = load_keras_model()
+        # 執行系統
+        success = system.run()
         
-        # Initialize camera states
-        camera_states = {
-            'customer': CameraState(),
-            'server': CameraState()
-        }
+        # 清理資源
+        system.cleanup()
         
-        # Open cameras
-        cap0 = open_camera_with_retry(CameraConfig.CAMERA_0_ID)
-        cap1 = open_camera_with_retry(CameraConfig.CAMERA_1_ID)
+        # 後處理
+        if success and not system.exit_by_user:
+            system.post_process()
         
-        # Get camera properties
-        width0 = int(cap0.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height0 = int(cap0.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        width1 = int(cap1.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height1 = int(cap1.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        
-        logger.info(f"Camera 0: {width0}x{height0}")
-        logger.info(f"Camera 1: {width1}x{height1}")
-        
-        # Create video writers
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out0 = cv2.VideoWriter(
-            'output_cam0.avi', fourcc,
-            CameraConfig.TARGET_FPS, (width0, height0)
-        )
-        out1 = cv2.VideoWriter(
-            'output_cam1.avi', fourcc,
-            CameraConfig.TARGET_FPS, (width1, height1)
-        )
-        
-        frame_count = 0
-        previous_results = {
-            'class_name': '', 'confidence_score': 0, 'emotion': '',
-            'age': 0, 'gender': '', 'gender_confidence': 0,
-            'class_name1': '', 'confidence_score1': 0, 'emotion1': '',
-            'age1': 0, 'gender1': '', 'gender_confidence1': 0
-        }
-        
-        logger.info("Starting main processing loop...")
-        logger.info("Press 'q' to quit manually")
-        
-        # Main loop
-        while True:
-            # Read frames
-            ret0, frame0 = cap0.read()
-            ret1, frame1 = cap1.read()
+        # 返回適當的退出碼
+        if system.exit_by_user:
+            sys.exit('q')
+        else:
+            sys.exit(0 if success else 1)
             
-            if not ret0 or not ret1:
-                logger.warning("Failed to read frames")
-                break
-            
-            # Prepare display frames
-            img0 = cv2.flip(cv2.resize(
-                frame0,
-                (CameraConfig.DISPLAY_WIDTH, CameraConfig.DISPLAY_HEIGHT)
-            ), 1)
-            img1 = cv2.flip(cv2.resize(
-                frame1,
-                (CameraConfig.DISPLAY_WIDTH, CameraConfig.DISPLAY_HEIGHT)
-            ), 1)
-            
-            # Process every frame
-            if frame_count % 1 == 0:
-                # Classify frames
-                class_name0, confidence0 = classify_frame(frame0, model, class_names)
-                class_name1, confidence1 = classify_frame(frame1, model, class_names)
-                
-                # TODO: Process detection and analysis
-                # (This would include the full logic from original)
-                
-            # Record frames
-            out0.write(frame0)
-            out1.write(frame1)
-            
-            # Display frames
-            cv2.imshow('Customer Camera', img0)
-            cv2.imshow('Server Camera', img1)
-            
-            # Check for exit
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                logger.info("User requested exit")
-                break
-            
-            frame_count += 1
-        
-    except KeyboardInterrupt:
-        logger.info("Program interrupted by user")
     except Exception as e:
-        logger.error(f"Unexpected error: {e}", exc_info=True)
-        return 1
-    finally:
-        # Cleanup
-        logger.info("Cleaning up resources...")
-        try:
-            cap0.release()
-            cap1.release()
-            out0.release()
-            out1.release()
-            cv2.destroyAllWindows()
-            logger.info("Resources released successfully")
-        except:
-            pass
-    
-    # Convert videos
-    convert_avi_to_mp4('output_cam0.avi', 'output_cam0.mp4')
-    convert_avi_to_mp4('output_cam1.avi', 'output_cam1.mp4')
-    
-    # Generate charts
-    generate_emotion_charts(camera_states)
-    
-    logger.info("="*60)
-    logger.info("Emotion Analysis System Finished")
-    logger.info("="*60)
-    
-    return 0
+        if system.logger:
+            system.logger.error(f"程式異常終止：{e}", exc_info=True)
+        else:
+            print(f"程式異常終止：{e}")
+        sys.exit(1)
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+if __name__ == "__main__":
+    main()

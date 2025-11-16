@@ -19,65 +19,71 @@ class CameraState:
     
     Attributes:
         person_detected: Whether a person is currently detected.
-        no_person_detected: Whether no person is currently detected.
-        person_detection_start_time: Timestamp when person was first detected.
-        no_person_detection_start_time: Timestamp when absence was first detected.
-        low_confidence_start_time: Timestamp when low confidence started.
-        ages_over_time: List of detected ages over time.
-        genders_over_time: List of (gender, confidence) tuples over time.
-        emotions_over_time: List of detected emotions over time.
-        result_age: Cached age result after initial analysis period.
-        result_gender: Cached gender result after initial analysis period.
-        result_gender_confidence: Cached gender confidence score.
+        session_end_detected: Whether session end (Class 2) is detected.
+        detection_start_time: Timestamp when person was first detected.
+        session_end_start_time: Timestamp when session end was first detected.
+        low_confidence_start: Timestamp when low confidence started.
+        ages: List of detected ages over time.
+        genders: List of (gender, confidence) tuples over time.
+        emotions: List of detected emotions over time.
+        cached_age: Cached age result after initial analysis period.
+        cached_gender: Cached gender result after initial analysis period.
+        cached_gender_confidence: Cached gender confidence score.
     """
     
     # Detection state
     person_detected: bool = False
-    no_person_detected: bool = False
+    session_end_detected: bool = False
     
     # Timing
-    person_detection_start_time: Optional[float] = None
-    no_person_detection_start_time: Optional[float] = None
-    low_confidence_start_time: Optional[float] = None
+    detection_start_time: Optional[float] = None
+    session_end_start_time: Optional[float] = None
+    low_confidence_start: Optional[float] = None
     
     # Analysis results over time
-    ages_over_time: List[int] = field(default_factory=list)
-    genders_over_time: List[Tuple[str, float]] = field(default_factory=list)
-    emotions_over_time: List[str] = field(default_factory=list)
+    ages: List[int] = field(default_factory=list)
+    genders: List[Tuple[str, float]] = field(default_factory=list)
+    emotions: List[str] = field(default_factory=list)
     
     # Cached results (after initial analysis period)
-    result_age: Optional[int] = None
-    result_gender: Optional[str] = None
-    result_gender_confidence: Optional[float] = None
+    cached_age: Optional[int] = None
+    cached_gender: Optional[str] = None
+    cached_gender_confidence: Optional[float] = None
     
     def reset(self):
         """Reset all state to initial values."""
         self.person_detected = False
-        self.no_person_detected = False
-        self.person_detection_start_time = None
-        self.no_person_detection_start_time = None
-        self.low_confidence_start_time = None
-        self.ages_over_time.clear()
-        self.genders_over_time.clear()
-        self.emotions_over_time.clear()
-        self.result_age = None
-        self.result_gender = None
-        self.result_gender_confidence = None
+        self.session_end_detected = False
+        self.detection_start_time = None
+        self.session_end_start_time = None
+        self.low_confidence_start = None
+        self.ages.clear()
+        self.genders.clear()
+        self.emotions.clear()
+        self.cached_age = None
+        self.cached_gender = None
+        self.cached_gender_confidence = None
     
-    def cache_demographics(self):
+    def cache_demographics(self, age=None, gender=None, gender_confidence=None):
         """
-        Cache the most recent demographic results.
+        Cache demographic results.
         
-        This should be called after the initial analysis period
-        to avoid repeated expensive demographic analysis.
+        This should be called after analysis to cache the results
+        and avoid repeated expensive demographic analysis.
+        
+        Args:
+            age: Age to cache.
+            gender: Gender to cache.
+            gender_confidence: Gender confidence to cache.
         """
-        if self.ages_over_time:
-            self.result_age = self.ages_over_time[-1]
+        if age is not None:
+            self.cached_age = age
+            self.ages.append(age)
         
-        if self.genders_over_time:
-            gender, confidence = self.genders_over_time[-1]
-            self.result_gender = gender
-            self.result_gender_confidence = confidence
+        if gender is not None and gender_confidence is not None:
+            self.cached_gender = gender
+            self.cached_gender_confidence = gender_confidence
+            self.genders.append((gender, gender_confidence))
     
     def get_elapsed_time(self, current_time: float) -> Optional[float]:
         """
@@ -89,22 +95,25 @@ class CameraState:
         Returns:
             Elapsed time in seconds, or None if not tracking.
         """
-        if self.person_detection_start_time is None:
+        if self.detection_start_time is None:
             return None
-        return current_time - self.person_detection_start_time
+        return current_time - self.detection_start_time
     
-    def should_analyze_demographics(self, elapsed_time: float, threshold: float) -> bool:
+    def should_analyze_demographics(self, current_time: float, threshold: float = 8.0) -> bool:
         """
         Determine if demographics should still be analyzed.
         
         Args:
-            elapsed_time: Time elapsed since detection started.
-            threshold: Time threshold for demographic analysis.
+            current_time: Current timestamp.
+            threshold: Time threshold for demographic analysis (default 8 seconds).
             
         Returns:
             True if demographics should be analyzed, False if cached results should be used.
         """
-        return elapsed_time <= threshold
+        if self.detection_start_time is None:
+            return False
+        elapsed = current_time - self.detection_start_time
+        return elapsed <= threshold
     
     def get_emotion_summary(self) -> dict:
         """
@@ -113,7 +122,7 @@ class CameraState:
         Returns:
             Dictionary with emotion counts and percentages.
         """
-        if not self.emotions_over_time:
+        if not self.emotions:
             return {
                 'total': 0,
                 'positive': 0,
@@ -122,11 +131,11 @@ class CameraState:
                 'percentages': {}
             }
         
-        from config import AnalysisConfig
+        from utils.analysis import categorize_emotion
         
         counts = {'positive': 0, 'negative': 0, 'neutral': 0}
-        for emotion in self.emotions_over_time:
-            category = AnalysisConfig.get_emotion_category(emotion)
+        for emotion in self.emotions:
+            category = categorize_emotion(emotion)
             counts[category] += 1
         
         total = sum(counts.values())
