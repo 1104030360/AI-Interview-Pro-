@@ -82,7 +82,7 @@
 ├── output_cam0.avi/mp4         # 攝影機0輸出影片
 ├── output_cam1.avi/mp4         # 攝影機1輸出影片
 │
-├── venv2/                       # Python 虛擬環境
+├── .venv/                       # Python 虛擬環境（Python 3.8.8）
 └── opencv-4.x/                  # OpenCV 原始碼（開發用）
 ```
 
@@ -169,7 +169,9 @@ CAMERA_1_ID=1
 ### 1. 環境設定
 ```bash
 # 啟動虛擬環境
-source venv2/bin/activate
+```bash
+source .venv/bin/activate
+```
 
 # 安裝依賴
 pip install -r requirements.txt
