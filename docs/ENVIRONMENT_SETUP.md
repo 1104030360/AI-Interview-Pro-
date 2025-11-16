@@ -1,8 +1,8 @@
 # 環境設定指南
 
 **更新日期：** 2025年11月16日  
-**Python 版本：** 3.8.8  
-**虛擬環境：** `.venv`
+**Python 版本：** 3.8.18  
+**虛擬環境：** Conda `new_tf_env`
 
 ---
 
@@ -33,47 +33,48 @@ git clone https://github.com/1104030360/Multimodal-Data-Applied-to-Service-Indus
 cd 專題python
 ```
 
-### 2. 建立並啟用虛擬環境
+### 2. 啟用 Conda 虛擬環境
 
-**使用現有的 .venv（推薦）：**
+**使用現有的 new_tf_env Conda 環境（推薦）：**
 
 ```bash
-# 啟用虛擬環境
-source .venv/bin/activate  # macOS/Linux
-# 或
-.venv\Scripts\activate  # Windows
+# 啟用 Conda 環境
+conda activate new_tf_env
 
 # 確認 Python 版本
-python --version  # 應該顯示 Python 3.8.8
+python --version  # 應該顯示 Python 3.8.18
+
+# 確認環境
+which python  # 應該顯示 miniforge3/envs/new_tf_env/bin/python
 ```
 
-**或重新建立虛擬環境：**
+**如果環境不存在，重新建立：**
 
 ```bash
-# 確保使用 Python 3.8.8
-python3.8 -m venv .venv
+# 建立新的 Conda 環境
+conda create -n new_tf_env python=3.8.18
 
-# 啟用虛擬環境
-source .venv/bin/activate
+# 啟用環境
+conda activate new_tf_env
 
-# 升級 pip
-pip install --upgrade pip
+# 安裝套件
+pip install -r requirements.txt
 ```
 
-### 3. 安裝依賴套件
+### 3. 安裝依賴套件（如需要）
 
 ```bash
-# 安裝所有必要套件
+# new_tf_env 已經安裝了大部分套件
+# 如需要補充安裝：
 pip install -r requirements.txt
 
-# 這將安裝：
-# - tensorflow==2.13.1
+# 已安裝的核心套件：
+# - tensorflow==2.13.0 (含 Metal GPU 加速)
 # - keras==2.13.1
 # - deepface==0.0.85
-# - opencv-python==4.9.0.80
-# - python-dotenv==1.0.1
-# - pytest==8.3.5
-# - pytest-cov==5.0.0
+# - opencv-python
+# - python-dotenv
+# - pytest
 # - 以及其他依賴套件
 ```
 
@@ -168,17 +169,18 @@ pytest --cov=. --cov-report=html
 
 ### 問題 1：ImportError: No module named 'tensorflow'
 
-**原因：** 虛擬環境未啟用或套件未安裝
+**原因：** Conda 環境未啟用或套件未安裝
 
 **解決方法：**
 ```bash
-# 確認虛擬環境已啟用
-which python  # 應該顯示 .venv/bin/python
+# 確認 Conda 環境已啟用
+which python  # 應該顯示 miniforge3/envs/new_tf_env/bin/python
+echo $CONDA_DEFAULT_ENV  # 應該顯示 new_tf_env
 
-# 如果沒有，啟用虛擬環境
-source .venv/bin/activate
+# 如果沒有，啟用 Conda 環境
+conda activate new_tf_env
 
-# 重新安裝套件
+# 重新安裝套件（如需要）
 pip install -r requirements.txt
 ```
 
@@ -256,8 +258,8 @@ pip install -r requirements.txt
 ### 執行重構版本（推薦）
 
 ```bash
-# 啟用虛擬環境
-source .venv/bin/activate
+# 啟用 Conda 環境
+conda activate new_tf_env
 
 # 執行主程式
 python project_refactored.py
@@ -269,8 +271,8 @@ python Auto_Switch_refactored.py
 ### 執行原始版本
 
 ```bash
-# 啟用虛擬環境
-source .venv/bin/activate
+# 啟用 Conda 環境
+conda activate new_tf_env
 
 # 執行原始主程式
 python project.py
@@ -294,7 +296,6 @@ python Auto_Switch.py
 
 ```
 專題python/
-├── .venv/                    # 虛擬環境 ⭐ 使用此環境
 ├── .env                      # 環境變數（需手動設定）
 ├── .env.example              # 環境變數範例
 ├── config.py                 # 設定管理
@@ -316,30 +317,34 @@ python Auto_Switch.py
 
 ---
 
-## 🔄 虛擬環境管理
+## 🔄 Conda 環境管理
 
-### 切換到 .venv
+### 啟用 new_tf_env
 
 ```bash
 # 停用當前環境（如果已啟用）
-deactivate
+conda deactivate
 
-# 啟用 .venv
-source .venv/bin/activate
+# 啟用 new_tf_env
+conda activate new_tf_env
 
 # 確認環境
-which python  # 應顯示：.../專題python/.venv/bin/python
-python --version  # 應顯示：Python 3.8.8
+which python  # 應顯示：.../miniforge3/envs/new_tf_env/bin/python
+python --version  # 應顯示：Python 3.8.18
+echo $CONDA_DEFAULT_ENV  # 應顯示：new_tf_env
 ```
 
 ### 更新套件
 
 ```bash
-# 啟用虛擬環境
-source .venv/bin/activate
+# 啟用 Conda 環境
+conda activate new_tf_env
 
 # 更新單一套件
 pip install --upgrade <套件名稱>
+
+# 或使用 conda
+conda update <套件名稱>
 
 # 更新所有套件（不建議，可能破壞相容性）
 pip list --outdated
@@ -368,8 +373,8 @@ diff requirements.txt requirements_new.txt
 # 進入專案目錄
 cd /Users/你的使用者名稱/Desktop/專題python
 
-# 啟用虛擬環境
-source .venv/bin/activate
+# 啟用 Conda 環境
+conda activate new_tf_env
 
 # 拉取最新程式碼
 git pull origin AI_FRIEND
@@ -431,9 +436,9 @@ git push origin feature/your-feature-name
 
 完成環境設定後，確認以下項目：
 
-- [ ] Python 3.8.8 已安裝
-- [ ] `.venv` 虛擬環境已建立並啟用
-- [ ] 所有依賴套件已安裝（requirements.txt）
+- [ ] Python 3.8.18 已安裝
+- [ ] Conda 環境 `new_tf_env` 可用並啟用
+- [ ] 所有依賴套件已安裝（TensorFlow, Keras, DeepFace 等）
 - [ ] `.env` 檔案已設定正確路徑
 - [ ] 模型檔案存在且可讀取
 - [ ] 字體檔案存在且可讀取

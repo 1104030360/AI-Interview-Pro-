@@ -82,8 +82,9 @@
 ├── output_cam0.avi/mp4         # 攝影機0輸出影片
 ├── output_cam1.avi/mp4         # 攝影機1輸出影片
 │
-├── .venv/                       # Python 虛擬環境（Python 3.8.8）
 └── opencv-4.x/                  # OpenCV 原始碼（開發用）
+
+**虛擬環境：** Conda 環境 `new_tf_env` (Python 3.8.18, TensorFlow 2.13.0 + Metal)
 ```
 
 ---
@@ -170,7 +171,7 @@ CAMERA_1_ID=1
 ```bash
 # 啟動虛擬環境
 ```bash
-source .venv/bin/activate
+conda activate new_tf_env
 ```
 
 # 安裝依賴

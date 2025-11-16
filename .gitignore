@@ -22,11 +22,11 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual Environment
-.venv/
-venv/
-ENV/
-env/
+# Virtual Environment (使用 Conda，不需要忽略)
+# .venv/
+# venv/
+# ENV/
+# env/
 
 # IDE
 .vscode/
