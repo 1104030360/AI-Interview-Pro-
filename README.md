@@ -6,7 +6,7 @@
 ![Flask](https://img.shields.io/badge/Flask-3.0-000000?logo=flask&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.2-61DAFB?logo=react&logoColor=black)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.13-FF6F00?logo=tensorflow&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
+
 
 **一個整合 AI 面試練習與即時情緒分析的智慧平台**
 
