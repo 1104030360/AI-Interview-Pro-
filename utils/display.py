@@ -38,7 +38,7 @@ def put_text_chinese(
     """
     try:
         config = Config()
-        font_path = config.paths.font_path
+        font_path = config.paths.FONT_PATH
         
         # 載入字體
         font = ImageFont.truetype(str(font_path), font_size)

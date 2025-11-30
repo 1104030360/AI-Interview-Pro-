@@ -1,0 +1,8 @@
+{
+  "name": "AI Interview Pro",
+  "description": "Professional AI-driven interview analysis platform for enterprise and engineering candidates.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

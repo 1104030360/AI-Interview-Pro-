@@ -64,10 +64,12 @@ class CameraState:
         self.cached_gender = None
         self.cached_gender_confidence = None
     
-    def cache_demographics(self, age=None, gender=None, gender_confidence=None):
+    def cache_demographics(
+        self, age=None, gender=None, gender_confidence=None
+    ):
         """
         Cache demographic results.
-        
+
         This should be called after analysis to cache the results
         and avoid repeated expensive demographic analysis.
         
@@ -99,16 +101,20 @@ class CameraState:
             return None
         return current_time - self.detection_start_time
     
-    def should_analyze_demographics(self, current_time: float, threshold: float = 8.0) -> bool:
+    def should_analyze_demographics(
+        self, current_time: float, threshold: float = 8.0
+    ) -> bool:
         """
         Determine if demographics should still be analyzed.
-        
+
         Args:
             current_time: Current timestamp.
-            threshold: Time threshold for demographic analysis (default 8 seconds).
-            
+            threshold: Time threshold for demographic analysis
+                (default 8 seconds).
+
         Returns:
-            True if demographics should be analyzed, False if cached results should be used.
+            True if demographics should be analyzed, False if cached
+            results should be used.
         """
         if self.detection_start_time is None:
             return False

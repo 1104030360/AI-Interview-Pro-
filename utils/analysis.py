@@ -266,7 +266,7 @@ def calculate_satisfaction_score(
     
     config = Config()
     if baseline_score is None:
-        baseline_score = config.analysis.baseline_score
+        baseline_score = config.analysis.BASELINE_SCORE
     
     stats = calculate_emotion_statistics(emotions)
     

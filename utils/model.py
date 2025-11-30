@@ -33,8 +33,8 @@ def load_keras_model(
         ModelLoadError: 如果載入失敗
     """
     config = Config()
-    model_path = config.paths.model_path
-    labels_path = config.paths.labels_path
+    model_path = config.paths.KERAS_MODEL_PATH
+    labels_path = config.paths.LABELS_PATH
     
     for attempt in range(max_retries):
         try:

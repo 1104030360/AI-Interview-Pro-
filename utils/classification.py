@@ -101,8 +101,8 @@ def is_person_detected(class_name: str, confidence_score: float) -> bool:
     """
     config = Config()
     return (
-        class_name == 'Class 1' and 
-        confidence_score >= config.analysis.min_confidence
+        class_name == 'Class 1' and
+        confidence_score >= config.analysis.MIN_CONFIDENCE
     )
 
 

@@ -36,9 +36,11 @@ def open_camera_with_retry(
     for attempt in range(max_retries):
         try:
             logger.info(f"Opening camera {camera_id} (attempt {attempt + 1})...")
-            
+
+            # 使用預設 backend（經測試比 AVFOUNDATION 快 7 倍）
             cap = cv2.VideoCapture(camera_id)
-            
+            logger.debug(f"Using default backend for camera {camera_id}")
+
             if not cap.isOpened():
                 raise CameraOpenError(
                     f"Failed to open camera {camera_id}"
@@ -86,11 +88,11 @@ def configure_camera(
         
         # 使用設定檔的預設值（如果未提供）
         if fps is None:
-            fps = config.camera.fps
+            fps = config.camera.TARGET_FPS
         if width is None:
-            width = config.camera.width
+            width = config.camera.CAMERA_WIDTH
         if height is None:
-            height = config.camera.height
+            height = config.camera.CAMERA_HEIGHT
         
         # 設定影格率
         cap.set(cv2.CAP_PROP_FPS, fps)

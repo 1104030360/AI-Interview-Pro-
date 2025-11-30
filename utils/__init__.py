@@ -27,6 +27,8 @@ from .analysis import (
     calculate_emotion_statistics,
     calculate_satisfaction_score
 )
+from .async_analysis import AsyncDeepFaceAnalyzer
+from .threaded_camera import ThreadedCamera, AsyncCameraInitializer
 from .display import (
     put_text_chinese,
     draw_analysis_results,
@@ -81,6 +83,11 @@ __all__ = [
     'map_emotion_to_score',
     'calculate_emotion_statistics',
     'calculate_satisfaction_score',
+    'AsyncDeepFaceAnalyzer',
+
+    # Threaded Camera
+    'ThreadedCamera',
+    'AsyncCameraInitializer',
     
     # Display
     'put_text_chinese',

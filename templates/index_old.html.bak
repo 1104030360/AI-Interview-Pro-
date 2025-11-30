@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>報表2</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="report-container">
+        
+        <div >
+            <h1 class="title">ADAM</h1>
+        </div>
+        <div class="flex-header">
+            <div>
+                <h2>Timmy_Service_1</h2> <!--要匯入 -->
+                </div>
+            <div class="time">
+                <h3>From 2024/6/2 16:30:12 TO 2024/6/2 16:36:39</h3><!--要匯入 -->
+            </div>
+        </div>
+        <div class="flex-header1">
+            <img src="{{ url_for('static', filename='timmy1.jpeg') }}" width="300" height="300" style="width: 300px; height:300px; border-radius:100%;"><!--要匯入-->
+            <div class="text1">
+                <h2>Timmy</h2><!--要匯入 -->
+                <h3>Microsoft Digital Global </h3>
+            </div>
+            <div class="total_score"><!--要匯入 -->
+                <p>AUDIO</p>
+                <h2>83.9</h2>
+                <p class="difference">和全部服務差異%值</p>
+            </div>
+        </div>
+        <div class="category_score">
+            <div class="AI2"><!--要匯入 -->
+                <p class="AUDIO">AUDIO</p>
+                <h2>78.6</h2>
+                <p class="difference">和全部服務差異%值</p>
+            </div>
+            <div class="AI2"><!--要匯入 -->
+                <p class="TEXT">TEXT</p>
+                <h2>88.5</h2>
+                <p class="difference">和全部服務差異%值</p>
+            </div>
+            <div class="AI2"><!--要匯入 -->
+                <p class="FACIAL">FACIAL</p>
+                <h2>84.7</h2>
+                <p class="difference">和全部服務差異%值</p>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div id="report1" class="report-section"><!--要匯入 -->
+                <h2>圖表 1</h2>
+                <img src="{{ url_for('static', filename='Customer_Emotion_Wave & Server_Emotion_Wave.jpg') }}" width="600" height="400"><!--要匯入-->
+            </div>
+            <div class="AI1"><!--要匯入 -->
+                <h2>AI生成建議1</h2>
+                <p>AI文本1</p>
+            </div>
+            <div id="report2" class="report-section"><!--要匯入 -->
+                <h2>圖表 2</h2>
+                <img src="{{ url_for('static', filename='combined_sentiment_analysis.png') }}" width="550" height="400"><!--要匯入-->
+            </div>
+            <div class="AI1"><!--要匯入 -->
+                <h2>AI生成建議2</h2>
+                <p>AI文本2</p>
+            </div>
+            <div id="report3" class="report-section"><!--要匯入 -->
+                <h2>圖表 3</h2>
+                <img src="{{ url_for('static', filename='emotion_distribution_combined.png') }}" width="600" height="400"><!--要匯入-->
+            </div>
+            <div class="AI1"><!--要匯入 -->
+                <h2>AI生成建議3</h2>
+                <p>AI文本3</p>
+            </div>
+            <!-- 根據需要添加更多圖表 -->
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

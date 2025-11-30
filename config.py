@@ -12,7 +12,7 @@ All settings can be overridden using environment variables.
 
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -21,19 +21,24 @@ load_dotenv()
 
 class PathConfig:
     """File path configuration."""
-    
+
     # Model paths
     MODEL_DIR = Path(os.getenv('MODEL_DIR', './models'))
-    KERAS_MODEL_PATH = Path(os.getenv('KERAS_MODEL_PATH', MODEL_DIR / 'keras_model.h5'))
+    KERAS_MODEL_PATH = Path(os.getenv(
+        'KERAS_MODEL_PATH', MODEL_DIR / 'keras_model.h5'
+    ))
     LABELS_PATH = Path(os.getenv('LABELS_PATH', MODEL_DIR / 'labels.txt'))
     
     # Font paths
     FONT_DIR = Path(os.getenv('FONT_DIR', './fonts'))
-    FONT_PATH = Path(os.getenv('FONT_PATH', FONT_DIR / 'NotoSansTC-VariableFont_wght.ttf'))
-    
+    FONT_PATH = Path(os.getenv(
+        'FONT_PATH', FONT_DIR / 'NotoSansTC-VariableFont_wght.ttf'
+    ))
+
     # Output paths
     OUTPUT_DIR = Path(os.getenv('OUTPUT_DIR', './output'))
     LOG_DIR = Path(os.getenv('LOG_DIR', './logs'))
+    WEB_STATIC_DIR = Path(os.getenv('WEB_STATIC_DIR', './static'))
     
     @classmethod
     def validate_paths(cls) -> Dict[str, bool]:
@@ -74,6 +79,7 @@ class PathConfig:
         """Create output directories if they don't exist."""
         cls.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         cls.LOG_DIR.mkdir(parents=True, exist_ok=True)
+        cls.WEB_STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class CameraConfig:
@@ -83,10 +89,36 @@ class CameraConfig:
     CAMERA_0_ID = int(os.getenv('CAMERA_0_ID', 0))
     CAMERA_1_ID = int(os.getenv('CAMERA_1_ID', 1))
     
+    # Camera Mode: 'SINGLE' (Customer only) or 'DUAL' (Customer + Server)
+    MODE = os.getenv('CAMERA_MODE', 'DUAL').upper()
+    
+    @classmethod
+    def get_active_cameras(cls) -> list:
+        """
+        Get list of active camera configurations based on MODE.
+        
+        Returns:
+            List of dicts with keys: id, name, role
+        """
+        cameras = [{
+            'id': cls.CAMERA_0_ID,
+            'name': 'customer',
+            'role': 'primary'
+        }]
+        
+        if cls.MODE == 'DUAL':
+            cameras.append({
+                'id': cls.CAMERA_1_ID,
+                'name': 'server',
+                'role': 'secondary'
+            })
+            
+        return cameras
+    
     # Camera settings
-    TARGET_FPS = 5
-    CAMERA_WIDTH = 320
-    CAMERA_HEIGHT = 240
+    TARGET_FPS = 30  # 提升到 30 FPS for smooth performance
+    CAMERA_WIDTH = 640  # 提升到 640x480 for better quality
+    CAMERA_HEIGHT = 480
     
     # Display resolution
     DISPLAY_WIDTH = 768
@@ -99,12 +131,23 @@ class AnalysisConfig:
     # Detection timing (seconds)
     PRESENCE_DETECTION_DELAY_SEC = 3
     """Wait time before starting analysis after person detected."""
-    
+
     ABSENCE_DETECTION_DELAY_SEC = 3
     """Wait time before stopping analysis after person absent."""
-    
+
     LOW_CONFIDENCE_TIMEOUT_SEC = 3
     """Timeout for low confidence detection."""
+
+    # DeepFace Configuration
+    DEEPFACE_DETECTOR = os.getenv('DEEPFACE_DETECTOR', 'opencv')
+    """Face detection backend (opencv, ssd, mtcnn, retinaface)."""
+    
+    DEEPFACE_FRAME_SKIP = int(os.getenv('DEEPFACE_FRAME_SKIP', 5))
+    """Number of frames to skip between DeepFace analyses."""
+
+    # Detection confidence threshold
+    MIN_CONFIDENCE = 0.5
+    """Minimum confidence score for person detection (0.0-1.0)."""
     
     # Analysis duration (seconds)
     DEMOGRAPHIC_ANALYSIS_DURATION_SEC = 8
@@ -174,9 +217,12 @@ class AnalysisConfig:
         # Calculate weighted score
         pos_ratio = counts['positive'] / total
         neg_ratio = counts['negative'] / total
-        
-        score = cls.BASELINE_SCORE + cls.EMOTION_WEIGHT_RANGE * (pos_ratio - neg_ratio)
-        
+
+        score = (
+            cls.BASELINE_SCORE +
+            cls.EMOTION_WEIGHT_RANGE * (pos_ratio - neg_ratio)
+        )
+
         return round(score, 2)
 
 
@@ -214,7 +260,10 @@ class Config:
             error_msg = "Missing required files:\n"
             for name, path in missing_files:
                 error_msg += f"  - {name}: {path}\n"
-            error_msg += "\nPlease check your .env file and ensure all paths are correct."
+            error_msg += (
+                "\nPlease check your .env file and ensure all paths "
+                "are correct."
+            )
             return False, error_msg
         
         # Ensure output directories exist

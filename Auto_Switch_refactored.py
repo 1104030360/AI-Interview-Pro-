@@ -48,7 +48,7 @@ class AutoTriggerSystem:
             self.logger.info("=== 自動觸發系統啟動 ===")
             
             # 載入人臉偵測模型
-            cascade_path = "haarcascade_frontalface_default.xml"
+            cascade_path = "models/cascade/haarcascade_frontalface_default.xml"
             self.face_cascade = cv2.CascadeClassifier(cascade_path)
             
             if self.face_cascade.empty():
@@ -62,6 +62,10 @@ class AutoTriggerSystem:
             self.logger.info("開啟攝影機...")
             self.camera = open_camera_with_retry(0, max_retries=3)
             configure_camera(self.camera)
+            
+            # 等待攝影機暖機
+            self.logger.info("等待攝影機暖機 (5秒)...")
+            time.sleep(5.0)
             
             self.logger.info("系統初始化完成")
             return True
@@ -136,8 +140,9 @@ class AutoTriggerSystem:
         
         try:
             # 執行重構後的主程式
+            # 使用 sys.executable 確保使用當前虛擬環境的 Python
             result = subprocess.run(
-                ['python', 'project_refactored.py'],
+                [sys.executable, 'project_refactored.py'],
                 capture_output=True,
                 text=True,
                 timeout=600  # 10 分鐘超時

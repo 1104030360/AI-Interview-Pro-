@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADAM - 情緒分析報表儀表板</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            /* Sophisticated Dark Theme Colors */
+            --gold-primary: #d4af37;
+            --gold-light: #c9a861;
+            --gold-dark: #b8941f;
+
+            --blue-gray: #8b9dc3;
+            --blue-gray-light: #a8b7d4;
+            --sage-green: #6b9080;
+
+            /* Background System */
+            --bg-darkest: #1a1d29;
+            --bg-dark: #252936;
+            --bg-card: #2a2f3f;
+            --bg-hover: #343a4f;
+
+            /* Text Colors */
+            --text-primary: #e8eaf0;
+            --text-secondary: #a0a8b8;
+            --text-tertiary: #6b7280;
+            --text-heading: #f5f5f5;
+
+            /* Border Colors */
+            --border-primary: #3a4052;
+            --border-divider: #2e3340;
+            --border-hover: #d4af37;
+
+            /* Shadows */
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
+            --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.6);
+            --shadow-gold: 0 4px 12px rgba(212, 175, 55, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--bg-darkest) 0%, var(--bg-dark) 100%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Subtle Grid Background */
+        .blob-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .blob-container::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .blob {
+            display: none;
+        }
+
+        /* 主容器 */
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Elegant Card Effect */
+        .glass {
+            background: var(--bg-card);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            transition: all 250ms ease;
+            position: relative;
+        }
+
+        .glass::before,
+        .glass::after {
+            display: none;
+        }
+
+        .glass:hover {
+            box-shadow: var(--shadow-lg);
+            border-color: var(--gold-primary);
+            transform: translateY(-2px);
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 32px;
+            margin-bottom: 24px;
+            position: relative;
+            background: var(--bg-card);
+        }
+
+        .header h1 {
+            font-family: 'Inter', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--text-heading);
+            margin-bottom: 8px;
+            letter-spacing: 0.02em;
+        }
+
+        .header h1::first-letter {
+            color: var(--gold-primary);
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .refresh-btn {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            padding: 10px 20px;
+            background: transparent;
+            border: 1px solid var(--gold-primary);
+            color: var(--gold-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 12px;
+            transition: all 250ms ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .refresh-btn:hover {
+            background: var(--gold-primary);
+            color: var(--bg-darkest);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-gold);
+        }
+
+        .refresh-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .refresh-btn.loading {
+            background: var(--gold-primary);
+            color: var(--bg-darkest);
+            opacity: 0.8;
+        }
+
+        .refresh-btn.loading .icon {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 基本資訊卡片 */
+        .info-card {
+            padding: 32px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            position: relative;
+            background: var(--bg-card);
+        }
+
+        .info-card::before {
+            display: none;
+        }
+
+        .avatar-container {
+            position: relative;
+        }
+
+        .avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 2px solid var(--gold-primary);
+            box-shadow: var(--shadow-sm);
+            object-fit: cover;
+        }
+
+        .info-details {
+            flex: 1;
+        }
+
+        .info-details h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-heading);
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .info-item .icon {
+            color: var(--gold-primary);
+        }
+
+        .info-item .icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        /* 分數卡片網格 */
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .score-card {
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .score-card::before {
+            display: none;
+        }
+
+        .score-card::after {
+            display: none;
+        }
+
+        .score-card.total {
+            background: var(--bg-card);
+            border-color: var(--gold-primary);
+        }
+
+        .score-card.audio {
+            background: var(--bg-card);
+            border-color: var(--blue-gray);
+        }
+
+        .score-card.text {
+            background: var(--bg-card);
+            border-color: var(--gold-light);
+        }
+
+        .score-card.facial {
+            background: var(--bg-card);
+            border-color: var(--sage-green);
+        }
+
+        .score-card.total:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--gold-primary);
+        }
+
+        .score-card.audio:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--blue-gray);
+        }
+
+        .score-card.text:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--gold-light);
+        }
+
+        .score-card.facial:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--sage-green);
+        }
+
+        .score-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .score-label svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .score-value {
+            font-family: 'Inter', sans-serif;
+            font-size: 3rem;
+            font-weight: 300;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        .score-card.total .score-value {
+            color: var(--text-heading);
+            border-bottom: 3px solid var(--gold-primary);
+            display: inline-block;
+            padding-bottom: 4px;
+        }
+
+        .score-card.audio .score-value {
+            color: var(--text-heading);
+            border-bottom: 3px solid var(--blue-gray);
+            display: inline-block;
+            padding-bottom: 4px;
+        }
+
+        .score-card.text .score-value {
+            color: var(--text-heading);
+            border-bottom: 3px solid var(--gold-light);
+            display: inline-block;
+            padding-bottom: 4px;
+        }
+
+        .score-card.facial .score-value {
+            color: var(--text-heading);
+            border-bottom: 3px solid var(--sage-green);
+            display: inline-block;
+            padding-bottom: 4px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .score-card.total .progress-fill {
+            background: var(--gold-primary);
+        }
+
+        .score-card.audio .progress-fill {
+            background: var(--blue-gray);
+        }
+
+        .score-card.text .progress-fill {
+            background: var(--gold-light);
+        }
+
+        .score-card.facial .progress-fill {
+            background: var(--sage-green);
+        }
+
+        /* Tab 切換 */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 8px;
+            flex-wrap: wrap;
+            background: var(--bg-dark);
+            border-radius: 8px;
+        }
+
+        .tab {
+            flex: 1;
+            min-width: 150px;
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+            transition: all 250ms ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .tab svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .tab:hover {
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--gold-primary);
+        }
+
+        .tab.active {
+            background: var(--gold-primary);
+            color: var(--bg-darkest);
+            font-weight: 600;
+        }
+
+        /* 內容區域 */
+        .content-section {
+            padding: 32px;
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .holographic {
+            position: relative;
+        }
+
+        .holographic::after {
+            display: none;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .chart-item h3 {
+            position: relative;
+            padding-left: 12px;
+        }
+
+        .chart-item h3::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 16px;
+            background: var(--gold-primary);
+            display: block;
+        }
+
+        .chart-item {
+            text-align: center;
+        }
+
+        .chart-item img {
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid var(--border-primary);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .chart-item img:hover {
+            transform: scale(1.01);
+            box-shadow: var(--shadow-md);
+            border-color: var(--gold-primary);
+        }
+
+
+
+        /* AI Analysis - Elegant Border Left Style */
+        .ai-insight {
+            margin-top: 24px;
+            padding-left: 16px;
+            border-left: 3px solid var(--gold-primary);
+        }
+
+        .insight-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gold-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .insight-label::before {
+            display: none;
+        }
+
+        .insight-text {
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--text-primary);
+            margin: 0;
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+
+        /* 響應式 */
+        /* Smooth Transitions */
+        * {
+            transition: background-color 250ms ease, border-color 250ms ease, color 250ms ease;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .refresh-btn {
+                position: static;
+                margin: 20px auto 0;
+            }
+
+            .info-card {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .info-details {
+                align-items: center;
+            }
+
+            .info-item {
+                justify-content: center;
+            }
+
+            .score-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-item h3 {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Loading Animation */
+        .fade-in-up {
+            animation: fadeInUp 0.3s ease-out forwards;
+            opacity: 0;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+
+        .fade-in-up:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .fade-in-up:nth-child(3) {
+            animation-delay: 0.15s;
+        }
+
+        .fade-in-up:nth-child(4) {
+            animation-delay: 0.2s;
+        }
+
+        .fade-in-up:nth-child(5) {
+            animation-delay: 0.25s;
+        }
+
+        /* Floating Particles - Removed */
+        .particle {
+            display: none;
+        }
+
+        /* SVG 通用樣式 */
+        svg {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* 滑順滾動 */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Refined Details */
+        .score-label svg {
+            opacity: 0.7;
+        }
+
+        .info-item .icon svg {
+            opacity: 0.8;
+        }
+
+        /* Score Card Label Colors */
+        .score-card.total .score-label,
+        .score-card.total .score-label svg {
+            color: var(--gold-primary);
+        }
+
+        .score-card.audio .score-label,
+        .score-card.audio .score-label svg {
+            color: var(--blue-gray);
+        }
+
+        .score-card.text .score-label,
+        .score-card.text .score-label svg {
+            color: var(--gold-light);
+        }
+
+        .score-card.facial .score-label,
+        .score-card.facial .score-label svg {
+            color: var(--sage-green);
+        }
+
+        /* Add subtle divider */
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 5%;
+            right: 5%;
+            height: 1px;
+            background: linear-gradient(90deg,
+                    transparent,
+                    var(--border-divider),
+                    transparent);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Subtle Background -->
+    <div class="blob-container" id="blobContainer"></div>
+
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- Header -->
+        <header class="header glass fade-in-up">
+            <h1>ADAM 情緒分析報表</h1>
+            <p>EMOTION ANALYSIS DASHBOARD</p>
+            <button class="refresh-btn" id="refreshBtn">
+                <span class="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                </span>
+                <span>REFRESH</span>
+            </button>
+        </header>
+
+        <!-- System Control Panel -->
+        <div class="info-card glass fade-in-up" style="display: block;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-heading);">SYSTEM CONTROL</h2>
+                <span id="system-status" class="badge"
+                    style="padding: 8px 16px; border-radius: 20px; background: var(--border-primary); color: var(--text-secondary); font-weight: 600; font-size: 0.9rem;">Checking
+                    Status...</span>
+            </div>
+
+            <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <div class="btn-group" role="group" style="display: flex; gap: 10px;">
+                    <input type="radio" class="btn-check" name="cameraMode" id="modeSingle" value="SINGLE" checked
+                        style="display: none;">
+                    <label class="btn-outline" for="modeSingle"
+                        style="padding: 10px 20px; border: 1px solid var(--border-primary); border-radius: 6px; cursor: pointer; color: var(--text-secondary); transition: all 0.3s;">Single
+                        Camera (Customer)</label>
+
+                    <input type="radio" class="btn-check" name="cameraMode" id="modeDual" value="DUAL"
+                        style="display: none;">
+                    <label class="btn-outline" for="modeDual"
+                        style="padding: 10px 20px; border: 1px solid var(--border-primary); border-radius: 6px; cursor: pointer; color: var(--text-secondary); transition: all 0.3s;">Dual
+                        Camera (Customer + Server)</label>
+                </div>
+
+                <div style="margin-left: auto; display: flex; gap: 10px;">
+                    <button id="btnStart" onclick="startSystem()"
+                        style="padding: 10px 24px; background: var(--sage-green); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s;">START
+                        SYSTEM</button>
+                    <button id="btnStop" onclick="stopSystem()" disabled
+                        style="padding: 10px 24px; background: var(--border-primary); color: var(--text-tertiary); border: none; border-radius: 6px; cursor: not-allowed; font-weight: 600; transition: all 0.3s;">STOP
+                        SYSTEM</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // System Control Logic
+            document.addEventListener('DOMContentLoaded', function() {
+                checkStatus();
+                setInterval(checkStatus, 2000); // Poll every 2 seconds
+                
+                // Radio button styling logic
+                const radios = document.getElementsByName('cameraMode');
+                radios.forEach(radio => {
+                    radio.addEventListener('change', updateRadioStyles);
+                });
+                updateRadioStyles();
+            });
+
+            function updateRadioStyles() {
+                const radios = document.getElementsByName('cameraMode');
+                radios.forEach(radio => {
+                    const label = document.querySelector(`label[for="${radio.id}"]`);
+                    if (radio.checked) {
+                        label.style.borderColor = 'var(--gold-primary)';
+                        label.style.color = 'var(--gold-primary)';
+                        label.style.background = 'rgba(212, 175, 55, 0.1)';
+                    } else {
+                        label.style.borderColor = 'var(--border-primary)';
+                        label.style.color = 'var(--text-secondary)';
+                        label.style.background = 'transparent';
+                    }
+                });
+            }
+
+            async function checkStatus() {
+                try {
+                    const res = await fetch('/api/system/status');
+                    const data = await res.json();
+                    updateControlUI(data.running, data.camera_mode);
+                } catch (e) {
+                    console.error("Connection error:", e);
+                }
+            }
+
+            function updateControlUI(isRunning, mode) {
+                const statusBadge = document.getElementById('system-status');
+                const btnStart = document.getElementById('btnStart');
+                const btnStop = document.getElementById('btnStop');
+                const radios = document.getElementsByName('cameraMode');
+
+                if (isRunning) {
+                    statusBadge.textContent = "RUNNING (" + mode + ")";
+                    statusBadge.style.background = "var(--sage-green)";
+                    statusBadge.style.color = "#fff";
+                    
+                    btnStart.disabled = true;
+                    btnStart.style.opacity = "0.5";
+                    btnStart.style.cursor = "not-allowed";
+                    
+                    btnStop.disabled = false;
+                    btnStop.style.background = "#ef4444"; // Red
+                    btnStop.style.color = "#fff";
+                    btnStop.style.cursor = "pointer";
+                    
+                    radios.forEach(r => r.disabled = true);
+                } else {
+                    statusBadge.textContent = "STOPPED";
+                    statusBadge.style.background = "var(--border-primary)";
+                    statusBadge.style.color = "var(--text-secondary)";
+                    
+                    btnStart.disabled = false;
+                    btnStart.style.opacity = "1";
+                    btnStart.style.cursor = "pointer";
+                    
+                    btnStop.disabled = true;
+                    btnStop.style.background = "var(--border-primary)";
+                    btnStop.style.color = "var(--text-tertiary)";
+                    btnStop.style.cursor = "not-allowed";
+                    
+                    radios.forEach(r => r.disabled = false);
+                }
+            }
+
+            async function startSystem() {
+                const mode = document.querySelector('input[name="cameraMode"]:checked').value;
+                const btnStart = document.getElementById('btnStart');
+                
+                // Loading state
+                btnStart.textContent = "STARTING...";
+                btnStart.disabled = true;
+                
+                try {
+                    const res = await fetch('/api/system/start', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ camera_mode: mode })
+                    });
+                    const data = await res.json();
+                    
+                    if(data.status === 'success') {
+                        setTimeout(checkStatus, 1000); // Wait a bit then check
+                    } else {
+                        alert("Start Failed: " + data.message);
+                        btnStart.textContent = "START SYSTEM";
+                        btnStart.disabled = false;
+                    }
+                } catch (e) {
+                    alert("Error: " + e);
+                    btnStart.textContent = "START SYSTEM";
+                    btnStart.disabled = false;
+                }
+            }
+
+            async function stopSystem() {
+                if(!confirm("Are you sure you want to stop the system?")) return;
+                
+                const btnStop = document.getElementById('btnStop');
+                btnStop.textContent = "STOPPING...";
+                
+                try {
+                    const res = await fetch('/api/system/stop', { method: 'POST' });
+                    const data = await res.json();
+                    if(data.status === 'success') {
+                        setTimeout(checkStatus, 1000);
+                    }
+                } catch (e) {
+                    alert("Error: " + e);
+                } finally {
+                    btnStop.textContent = "STOP SYSTEM";
+                }
+            }
+        </script>
+
+        <!-- 基本資訊 -->
+        <div class="info-card glass fade-in-up">
+            <div class="avatar-container">
+                <img src="{{ url_for('static', filename='timmy1.jpeg') }}" alt="Avatar" class="avatar">
+            </div>
+            <div class="info-details">
+                <h2 id="personName">Timmy</h2>
+                <div class="info-item">
+                    <span class="icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                    </span>
+                    <span id="organization">Microsoft</span>
+                </div>
+                <div class="info-item">
+                    <span class="icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </span>
+                    <span id="serviceName">Timmy_Service_1</span>
+                </div>
+                <div class="info-item">
+                    <span class="icon">
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </span>
+                    <span class="timestamp" id="timeRange">From 2025-11-16 14:00 TO 2025-11-16 15:30</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Score Cards -->
+        <div class="score-grid">
+            <div class="score-card glass total fade-in-up holographic">
+                <div class="score-label">
+                    <svg viewBox="0 0 24 24">
+                        <polygon
+                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                        </polygon>
+                    </svg>
+                    <span>TOTAL SCORE</span>
+                </div>
+                <div class="score-value" id="totalScore">0</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="totalProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="score-card glass audio fade-in-up holographic">
+                <div class="score-label">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                    <span>AUDIO SCORE</span>
+                </div>
+                <div class="score-value" id="audioScore">0</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="audioProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="score-card glass text fade-in-up holographic">
+                <div class="score-label">
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                        <line x1="9" y1="20" x2="15" y2="20"></line>
+                        <line x1="12" y1="4" x2="12" y2="20"></line>
+                    </svg>
+                    <span>TEXT SCORE</span>
+                </div>
+                <div class="score-value" id="textScore">0</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="textProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="score-card glass facial fade-in-up holographic">
+                <div class="score-label">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                        <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                        <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                    </svg>
+                    <span>FACIAL SCORE</span>
+                </div>
+                <div class="score-value" id="facialScore">0</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="facialProgress" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 切換 -->
+        <div class="tabs glass fade-in-up">
+            <button class="tab active" data-tab="overview">
+                <svg viewBox="0 0 24 24">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+                <span>OVERVIEW</span>
+            </button>
+            <button class="tab" data-tab="customer">
+                <svg viewBox="0 0 24 24">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>CUSTOMER</span>
+            </button>
+            <button class="tab" data-tab="server">
+                <svg viewBox="0 0 24 24">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+                <span>SERVER</span>
+            </button>
+        </div>
+
+        <!-- 總覽內容 -->
+        <div class="content-section glass active" id="overview">
+            <div class="chart-grid">
+                <div class="chart-item">
+                    <h3>COMBINED EMOTION WAVE</h3>
+                    <img src="{{ url_for('static', filename='Customer_Emotion_Wave & Server_Emotion_Wave.jpg') }}"
+                        alt="Combined Wave" onclick="window.open(this.src, '_blank')">
+                </div>
+            </div>
+            <div class="ai-insight">
+                <h4 class="insight-label">AI ANALYSIS</h4>
+                <p class="insight-text" id="aiText1">整體服務表現優異，顧客情緒穩定且滿意度高。建議保持現有服務水準。</p>
+            </div>
+        </div>
+
+        <!-- 顧客情緒內容 -->
+        <div class="content-section glass" id="customer">
+            <div class="chart-grid">
+                <div class="chart-item">
+                    <h3>CUSTOMER EMOTION WAVE</h3>
+                    <img src="{{ url_for('static', filename='Customer_Emotion_Wave.jpg') }}" alt="Customer Wave"
+                        onclick="window.open(this.src, '_blank')">
+                </div>
+                <div class="chart-item">
+                    <h3>CUSTOMER EMOTION BAR</h3>
+                    <img src="{{ url_for('static', filename='Customer_Emotion_Bar1.jpg') }}" alt="Customer Bar"
+                        onclick="window.open(this.src, '_blank')">
+                </div>
+            </div>
+            <div class="ai-insight">
+                <h4 class="insight-label">AI ANALYSIS</h4>
+                <p class="insight-text" id="aiText2">顧客在服務過程中展現出高度的滿意度，情緒波動適中，整體互動良好。</p>
+            </div>
+        </div>
+
+        <!-- 服務員情緒內容 -->
+        <div class="content-section glass" id="server">
+            <div class="chart-grid">
+                <div class="chart-item">
+                    <h3>SERVER EMOTION WAVE</h3>
+                    <img src="{{ url_for('static', filename='Server_Emotion_Wave.jpg') }}" alt="Server Wave"
+                        onclick="window.open(this.src, '_blank')">
+                </div>
+                <div class="chart-item">
+                    <h3>SERVER EMOTION BAR</h3>
+                    <img src="{{ url_for('static', filename='Server_Emotion_Bar.jpg') }}" alt="Server Bar"
+                        onclick="window.open(this.src, '_blank')">
+                </div>
+            </div>
+            <div class="ai-insight">
+                <h4 class="insight-label">AI ANALYSIS</h4>
+                <p class="insight-text" id="aiText3">服務員表現專業，情緒控制良好，能有效回應顧客需求。建議繼續保持積極態度。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data from Flask backend via Jinja2
+        const reportData = {
+            title: "{{ data.title }}",
+            name: "{{ data.name }}",
+            time: "{{ data.time }}",
+            person_name: "{{ data.person_name }}",
+            organization: "{{ data.organization }}",
+            total_score: {{ data.total_score }},
+            audio_score: {{ data.audio_score }},
+            text_score: {{ data.text_score }},
+            facial_score: {{ data.facial_score }},
+            ai_text1: "{{ data.ai_text1 }}",
+            ai_text2: "{{ data.ai_text2 }}",
+            ai_text3: "{{ data.ai_text3 }}"
+        };
+
+        // Particles removed for sophisticated design
+
+        // 數字跳動動畫
+        function animateScore(element, targetScore) {
+            const duration = 1500;
+            const start = performance.now();
+            const startValue = 0;
+
+            function update(currentTime) {
+                const elapsed = currentTime - start;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // easeOutCubic
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                const currentValue = startValue + (targetScore - startValue) * easeProgress;
+
+                element.textContent = currentValue.toFixed(1);
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+
+            requestAnimationFrame(update);
+        }
+
+        // 初始化分數
+        function initScores() {
+            setTimeout(() => {
+                animateScore(document.getElementById('totalScore'), reportData.total_score);
+                animateScore(document.getElementById('audioScore'), reportData.audio_score);
+                animateScore(document.getElementById('textScore'), reportData.text_score);
+                animateScore(document.getElementById('facialScore'), reportData.facial_score);
+
+                // 進度條動畫
+                document.getElementById('totalProgress').style.width = reportData.total_score + '%';
+                document.getElementById('audioProgress').style.width = reportData.audio_score + '%';
+                document.getElementById('textProgress').style.width = reportData.text_score + '%';
+                document.getElementById('facialProgress').style.width = reportData.facial_score + '%';
+            }, 500);
+        }
+
+        // Tab 切換
+        function initTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            const sections = document.querySelectorAll('.content-section');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetTab = tab.dataset.tab;
+
+                    // 移除所有 active
+                    tabs.forEach(t => t.classList.remove('active'));
+                    sections.forEach(s => s.classList.remove('active'));
+
+                    // 添加 active
+                    tab.classList.add('active');
+                    document.getElementById(targetTab).classList.add('active');
+                });
+            });
+        }
+
+        // 重新整理按鈕
+        function initRefreshBtn() {
+            const refreshBtn = document.getElementById('refreshBtn');
+
+            refreshBtn.addEventListener('click', () => {
+                refreshBtn.classList.add('loading');
+
+                // 重置分數
+                document.getElementById('totalScore').textContent = '0';
+                document.getElementById('audioScore').textContent = '0';
+                document.getElementById('textScore').textContent = '0';
+                document.getElementById('facialScore').textContent = '0';
+
+                document.getElementById('totalProgress').style.width = '0%';
+                document.getElementById('audioProgress').style.width = '0%';
+                document.getElementById('textProgress').style.width = '0%';
+                document.getElementById('facialProgress').style.width = '0%';
+
+                // 模擬載入
+                setTimeout(() => {
+                    refreshBtn.classList.remove('loading');
+                    initScores();
+                }, 1500);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // 設置基本資訊
+            document.getElementById('personName').textContent = reportData.person_name;
+            document.getElementById('organization').textContent = reportData.organization;
+            document.getElementById('serviceName').textContent = reportData.name;
+            document.getElementById('timeRange').textContent = reportData.time;
+            document.getElementById('aiText1').textContent = reportData.ai_text1;
+            document.getElementById('aiText2').textContent = reportData.ai_text2;
+            document.getElementById('aiText3').textContent = reportData.ai_text3;
+
+            // Initialize features
+            initScores();
+            initTabs();
+            initRefreshBtn();
+        });
+
+
+    </script>
+</body>
+
+</html>
