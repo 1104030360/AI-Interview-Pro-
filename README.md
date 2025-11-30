@@ -14,13 +14,9 @@
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=flat-square)
 ![JWT](https://img.shields.io/badge/JWT-Auth-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)
 
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
-![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)
-![Platform](https://img.shields.io/badge/Platform-macOS%20|%20Windows%20|%20Linux-lightgrey?style=flat-square)
-
 **🎯 一個整合 AI 面試練習與即時情緒分析的智慧平台**
 
-*支援多種 AI 模型（OpenAI GPT-4、Claude 3、Gemini、Ollama）| 即時雙鏡頭情緒分析 | Producer-Consumer 非同步高效能處理*
+*支援多種 AI 模型（OpenAI GPT、Gemini、Ollama）| 即時雙鏡頭情緒分析 | Producer-Consumer 非同步高效能處理*
 
 [🚀 快速開始](#-快速開始) | [✨ 功能特色](#-功能特色) | [🏗️ 系統架構](#️-系統架構) | [📖 API 文檔](#-api-端點) | [❓ 常見問題](#-常見問題)
 
@@ -619,7 +615,7 @@ questions
 
 ### Provider 架構
 
-```
+```text
 backend/services/providers/
 ├── __init__.py
 ├── base.py          # AIProviderBase 抽象基類
@@ -775,43 +771,6 @@ class MyProvider(AIProviderBase):
     def stream(self, messages: list, **kwargs):
         # 實作串流邏輯
         yield from ...
-```
-
----
-
-## ⚡ 效能優化
-
-### 情緒分析系統優化策略
-
-本系統採用多項效能優化技術，確保即時分析的流暢性：
-
-| 優化技術 | 說明 | 效果 |
-|---------|------|------|
-| **ThreadedCamera** | 在獨立執行緒中讀取攝影機，避免阻塞 UI | 消除畫面卡頓 |
-| **AsyncDeepFaceAnalyzer** | Producer-Consumer 模式非同步分析 | FPS 提升 10-30x |
-| **Frame Skipping** | 每 5 幀分析一次，減少 GPU 負載 | CPU/GPU 使用率降低 80% |
-| **Image Downsampling** | 降採樣至 320x240 進行分析 | 分析速度提升 3x |
-| **Result Caching** | 快取人口統計資訊（前 8 秒） | 減少重複計算 |
-| **Metal/CUDA 加速** | 自動偵測並使用 GPU | macOS M1/M2 原生支援 |
-
-### 架構說明
-
-```python
-# 非同步分析器使用範例
-analyzer = AsyncDeepFaceAnalyzer(
-    name='customer',
-    detector_backend='opencv',  # 最快的 detector
-    frame_skip=5,               # 每 5 幀分析一次
-    input_width=320,            # 降採樣寬度
-    input_height=240,           # 降採樣高度
-    analyze_actions=['emotion', 'age', 'gender']
-)
-
-# 非阻塞提交
-analyzer.submit_frame(frame, class_name, confidence)
-
-# 非阻塞獲取結果
-result = analyzer.get_result(timeout=0.001)
 ```
 
 ---
