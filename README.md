@@ -883,19 +883,6 @@ npm install --legacy-peer-deps
 
 ---
 
-## 授權資訊
-
-本專案採用 MIT 授權條款。詳見 [LICENSE](LICENSE) 檔案。
-
-### 第三方授權
-
-- **DeepFace**: MIT License - [serengil/deepface](https://github.com/serengil/deepface)
-- **TensorFlow**: Apache 2.0 License
-- **Flask**: BSD-3-Clause License
-- **React**: MIT License
-
----
-
 <div align="center">
 
 **Made for better interview preparation**
