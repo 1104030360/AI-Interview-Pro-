@@ -896,23 +896,6 @@ npm install --legacy-peer-deps
 
 ---
 
-## 聯絡與貢獻
-
-如有問題或建議，歡迎透過以下方式聯繫：
-
-- **Issue**: [GitHub Issues](https://github.com/1104030360/AI-Interview-Pro-/issues)
-- **Pull Request**: 歡迎提交 PR，請遵循 [Conventional Commits](https://www.conventionalcommits.org/) 規範
-
-### 貢獻指南
-
-1. Fork 本專案
-2. 建立功能分支 (`git checkout -b feat/amazing-feature`)
-3. 提交變更 (`git commit -m 'feat: add amazing feature'`)
-4. 推送分支 (`git push origin feat/amazing-feature`)
-5. 開啟 Pull Request
-
----
-
 <div align="center">
 
 **Made for better interview preparation**
